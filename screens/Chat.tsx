@@ -34,6 +34,7 @@ export default function Chat() {
   const [connecting, setConnecting] = useState(false);
 
   function handleNewChat() {
+    if(connecting) return;
     const intArray: Array<String> = interests.split(',').map((interest) => interest.trim());
     socket.emit('joinRandomRoom', intArray);
     setText([]);

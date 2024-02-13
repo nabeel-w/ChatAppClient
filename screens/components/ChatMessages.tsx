@@ -102,8 +102,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '400',
     alignSelf: 'center',
-    position: 'absolute',
+    position: 'relative',
     bottom: 0,
+    padding: 10,
   },
 });
 
