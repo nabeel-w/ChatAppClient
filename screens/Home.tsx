@@ -15,8 +15,8 @@ export default function Home({ navigation }:Props) {
   return (
     <View style={styles.container}>
       <View>
-      <Text style={styles.title}>ChatRoulette</Text>
-      <Text style={styles.descText}>Embark on an unpredictable journey of spontaneous conversations with ChatRoulette</Text>
+      <Text style={styles.title}>Chat App</Text>
+      <Text style={styles.descText}>Embark on an unpredictable journey of spontaneous conversations with our Socket.io Chat App</Text>
       </View>
       <TouchableOpacity style={styles.button} onPress={()=>{navigation.push('Chat');} }>
         <Text style={styles.buttonText}>Get Started</Text>
