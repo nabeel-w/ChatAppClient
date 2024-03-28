@@ -63,8 +63,6 @@ To run the app locally, follow these steps:
 
 2. **Enhanced Matching Algorithm**: Improve the matching algorithm to provide better matches based on user preferences and behaviors.
 
-3. **Group Chat**: Enable users to create and join group conversations with multiple participants.
-
-4. **Media Sharing**: Allow users to share images, videos, and other media files during conversations.
+3. **Media Sharing**: Allow users to share images, videos, and other media files during conversations.
 
 
