@@ -51,7 +51,6 @@ export default function Chat() {
 
   function handleBlur() {
     if (recepient === undefined) return;
-    console.log('Keyboard in Focus');
     socket.emit('isTyping', recepient, false);
   }
 
@@ -128,14 +127,12 @@ export default function Chat() {
   }, []);
 
 
-  console.log(interests);
-
   return (
     <KeyboardAvoidingView style={styles.container}>
       <ChatMessages text={text} recepient={recepient} interests={commanInt} ended={ended} isTyping={isTyping} connecting={connecting} />
       <View style={styles.intContainer}>
         <TextInput onChangeText={(txt) => setInterests(txt)} style={styles.interest} multiline
-          numberOfLines={undefined} placeholder="Intrests: 'Programming, Guitar, Music'" value={interests} />
+          numberOfLines={undefined} placeholder="Interests: 'Programming, Guitar, Music'" value={interests} />
       </View>
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.button} onPress={room === undefined ? handleNewChat : handleEndChat}>
@@ -144,7 +141,9 @@ export default function Chat() {
         </TouchableOpacity>
         <View style={styles.inputFeild}>
           <TextInput onChangeText={(txt) => setMessage(txt)} style={styles.textInput} onFocus={handleFocus} onBlur={handleBlur}
-            numberOfLines={undefined} multiline placeholder="Enter Your Message" value={message} />
+            numberOfLines={undefined} multiline placeholder="Enter Your Message" value={message}
+            
+            />
           <TouchableOpacity onPress={handleSend}>
             <Ionicons name="send" size={28} style={styles.buttonIcon} />
           </TouchableOpacity>
