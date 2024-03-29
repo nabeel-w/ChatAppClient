@@ -3,12 +3,13 @@
 import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import React, { useEffect, useState } from 'react';
+import messaging from '@react-native-firebase/messaging';
 import ChatMessages from './components/ChatMessages';
 import io from 'socket.io-client';
-import { SOCKET_URI } from "@env"
+import { SOCKET_URI, FCM_SERVER_KEY } from "@env"
 
 
-const url: string = SOCKET_URI || '';
+const url: string = SOCKET_URI;
 
 const socket = io(url);
 
@@ -32,6 +33,28 @@ export default function Chat() {
   const [text, setText] = useState<TextObj[]>([]);
   const [isTyping, setTyping] = useState(false);
   const [connecting, setConnecting] = useState(false);
+
+  const sendNotification = async (message: string, title: string) => {
+    const fcmToken = await messaging().getToken();
+    
+    const notification = {
+      to: fcmToken,
+      notification: {
+        title: title,
+        body: message,
+        icon: 'ic_stat_send_786306'
+      },
+    };
+  
+    await fetch('https://fcm.googleapis.com/fcm/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `key=${FCM_SERVER_KEY}`,
+      },
+      body: JSON.stringify(notification),
+    });
+  };
 
   function handleNewChat() {
     if(connecting) return;
@@ -75,6 +98,7 @@ export default function Chat() {
         return [...prev, { message: msg, recived: true }];
       });
       setTyping(false);
+      sendNotification(msg,'New Message');
     };
 
     const handleJoinRoom = (users: String[], roomName: String, commanIntrests: String[]) => {
@@ -88,6 +112,7 @@ export default function Chat() {
       setRecepient(recpId[0]);
       console.log(`Joined users: ${users}`);
       setConnecting(false);
+      sendNotification('Tap To Start Chatting','Stranger Connected')
     };
 
     const handleNewRoom = (roomName: string) => {
@@ -104,6 +129,7 @@ export default function Chat() {
       setCommanInt([]);
       setEnded(true);
       setConnecting(false);
+      sendNotification('Start a new Chat','Stranger Disconnected')
     };
 
     const handleTyping = (Typing: boolean) => {

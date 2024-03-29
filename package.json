@@ -6,13 +6,15 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
-    "clean" : "cd android && gradlew clean && cd ../",
-    "build" : "npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res",
-    "assemble" : "cd android && gradlew assembleDebug && cd ../",
+    "clean": "cd android && gradlew clean && cd ../",
+    "build": "npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res",
+    "assemble": "cd android && gradlew assembleDebug && cd ../",
     "start": "react-native start",
     "test": "jest"
   },
   "dependencies": {
+    "@react-native-firebase/app": "^19.1.1",
+    "@react-native-firebase/messaging": "^19.1.1",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
     "dotenv": "^16.4.1",
