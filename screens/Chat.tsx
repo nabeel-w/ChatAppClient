@@ -6,7 +6,10 @@ import React, { useEffect, useState } from 'react';
 import messaging from '@react-native-firebase/messaging';
 import ChatMessages from './components/ChatMessages';
 import io from 'socket.io-client';
+import { generateKeys, generateSharedSecret } from '../utils/createKeys';
 import { SOCKET_URI, FCM_SERVER_KEY } from "@env"
+import bigInt from 'big-integer';
+import CryptoJS from "react-native-crypto-js";
 
 
 const url: string = SOCKET_URI;
@@ -23,6 +26,12 @@ type TextObj = {
   recived: Boolean,
 }
 
+type DHKeys ={
+  prime: bigInt.BigInteger,
+  privateKey: bigInt.BigInteger,
+  publicKey: bigInt.BigInteger,
+}
+
 export default function Chat() {
   const [message, setMessage] = useState('');
   const [interests, setInterests] = useState('');
@@ -33,7 +42,10 @@ export default function Chat() {
   const [text, setText] = useState<TextObj[]>([]);
   const [isTyping, setTyping] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [sharedSecret, setSharedSecret] = useState<string>();
 
+  const userKey = generateKeys();
+  
   const sendNotification = async (message: string, title: string) => {
     const fcmToken = await messaging().getToken();
     
@@ -84,21 +96,24 @@ export default function Chat() {
   }
 
   function handleSend() {
-    if (message === '' || recepient === undefined) return;
-    socket.emit('sendMessage', message, recepient);
+    if (message === '' || recepient === undefined || connecting || sharedSecret === undefined) return;
     setText((prev) => {
       return [...prev, { message: message, recived: false }];
     });
+    const encryptedMes=CryptoJS.AES.encrypt(message,sharedSecret).toString();
+    socket.emit('sendMessage', encryptedMes, recepient);
     setMessage('');
   }
 
   useEffect(() => {
     const handleRecive = (msg: string) => {
+      if(sharedSecret===undefined) return
+      const decryptedMsg = CryptoJS.AES.decrypt(msg,sharedSecret).toString(CryptoJS.enc.Utf8);
       setText((prev) => {
-        return [...prev, { message: msg, recived: true }];
+        return [...prev, { message: decryptedMsg, recived: true }];
       });
       setTyping(false);
-      sendNotification(msg,'New Message');
+      sendNotification(decryptedMsg,'New Message');
     };
 
     const handleJoinRoom = (users: String[], roomName: String, commanIntrests: String[]) => {
@@ -106,13 +121,10 @@ export default function Chat() {
         name: roomName,
         users: [...users],
       });
-      console.log(commanIntrests);
       if (commanIntrests.length !== 0) setCommanInt([...commanIntrests]);
       const recpId: String[] = users.filter(user => user !== socket.id);
       setRecepient(recpId[0]);
-      console.log(`Joined users: ${users}`);
-      setConnecting(false);
-      sendNotification('Tap To Start Chatting','Stranger Connected')
+      socket.emit('exchangeKey', userKey.publicKey.toString(), recpId[0]);
     };
 
     const handleNewRoom = (roomName: string) => {
@@ -120,7 +132,6 @@ export default function Chat() {
         name: roomName,
         users: [socket.id],
       });
-      console.log(`Joined room: ${roomName}`);
     };
 
     const handleDisconnect = () => {
@@ -128,6 +139,7 @@ export default function Chat() {
       setRecepient(undefined);
       setCommanInt([]);
       setEnded(true);
+      setTyping(false);
       setConnecting(false);
       sendNotification('Start a new Chat','Stranger Disconnected')
     };
@@ -136,21 +148,31 @@ export default function Chat() {
       setTyping(Typing);
     };
 
+    const handleKeyExchange = (publicKey: string) => {
+      const receivedKey = bigInt(publicKey);
+      const secret = generateSharedSecret(userKey.privateKey,receivedKey,userKey.prime);
+      setSharedSecret(secret);
+      setConnecting(false);
+      sendNotification('Tap To Start Chatting','Stranger Connected')
+    };
+
     socket.on('newMessage', handleRecive);
     socket.on('roomJoined', handleJoinRoom);
     socket.on('roomCreated', handleNewRoom);
     socket.on('roomDestroyed', handleDisconnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('typing', handleTyping);
+    socket.on('handleKey', handleKeyExchange);
     return () => {
       socket.off('newMessage', handleRecive);
       socket.off('roomJoined', handleJoinRoom);
       socket.off('roomCreated', handleNewRoom);
       socket.off('roomDestroyed', handleDisconnect);
       socket.off('disconnect', handleDisconnect);
-      socket.on('typing', handleTyping);
+      socket.off('typing', handleTyping);
+      socket.off('handleKey', handleKeyExchange);
     };
-  }, []);
+  }, [sharedSecret]);
 
 
   return (

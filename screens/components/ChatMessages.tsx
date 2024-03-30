@@ -25,7 +25,7 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, 
 
   const scrollToBottom = () => {
     if (scrollViewRef.current) {
-      scrollViewRef.current.scrollToEnd({ animated: false })
+      scrollViewRef.current.scrollToEnd({ animated: false });
     }
   };
 
