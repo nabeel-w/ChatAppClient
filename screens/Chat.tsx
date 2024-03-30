@@ -26,12 +26,6 @@ type TextObj = {
   recived: Boolean,
 }
 
-type DHKeys ={
-  prime: bigInt.BigInteger,
-  privateKey: bigInt.BigInteger,
-  publicKey: bigInt.BigInteger,
-}
-
 export default function Chat() {
   const [message, setMessage] = useState('');
   const [interests, setInterests] = useState('');
