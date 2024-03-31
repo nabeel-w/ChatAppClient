@@ -20,27 +20,11 @@ This chat app built using React Native and Socket.io enables users to connect wi
 
 To run the app locally, follow these steps:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/nabeel-w/ChatAppClient.git
-   ```
+Download the app APK from the following link: [ChatApp APK](https://drive.google.com/file/d/19fEgjdzm5lD4CBVk6uzvESo6dgzoTGxG/view)
 
-2. Navigate to the project directory:
-   ```bash
-   cd ChatAppClient
-   ```
+Install the downloaded APK on your device by opening it after the download completes.
 
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-4. Start the development server:
-   ```bash
-   npm start
-   ```
-
-5. Install the app on your device.
+That's it! You can now use the ChatApp on your device.
 
 ## Usage
 
