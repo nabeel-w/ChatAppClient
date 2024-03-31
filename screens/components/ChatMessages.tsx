@@ -3,10 +3,12 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import React, { useRef } from 'react';
 import IsTyping from './IsTyping';
+import LinkElement from './LinkElement';
 
 type TextObj = {
-  message: String,
+  message: string,
   recived: Boolean,
+  isUrl: Boolean,
 }
 
 interface ChatMessagesProps {
@@ -39,11 +41,15 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, 
       {(interests[0] !== '' && interests.length !== 0) && <Text style={styles.mutedDesc}>You both like {interests.map(interest=>`${interest} `)}</Text>}
       {text.map((txt,index) => (
         !txt.recived ?
-          <View style={styles.sentText} key={index}>
-            <Text style={styles.textSent}>{txt.message}</Text>
+        <View style={styles.sentText} key={index}>
+            {txt.isUrl ? <LinkElement message={txt.message} />
+            : <Text style={styles.textSent}>{txt.message}</Text>
+            }
           </View> :
           <View style={styles.recivedText} key={index}>
-            <Text style={styles.textRecived}>{txt.message}</Text>
+            {txt.isUrl ? <LinkElement message={txt.message} />
+            : <Text style={styles.textRecived}>{txt.message}</Text>
+            }
           </View>
       ))}
       {isTyping && <IsTyping />}

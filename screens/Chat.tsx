@@ -10,6 +10,7 @@ import { generateKeys, generateSharedSecret } from '../utils/createKeys';
 import { SOCKET_URI, FCM_SERVER_KEY } from "@env"
 import bigInt from 'big-integer';
 import CryptoJS from "react-native-crypto-js";
+import Tags from "react-native-tags";
 
 
 const url: string = SOCKET_URI;
@@ -22,13 +23,14 @@ type Room = {
 }
 
 type TextObj = {
-  message: String,
+  message: string,
   recived: Boolean,
+  isUrl: Boolean,
 }
 
 export default function Chat() {
   const [message, setMessage] = useState('');
-  const [interests, setInterests] = useState('');
+  const [interest, setInterest] = useState<String[]>();
   const [commanInt, setCommanInt] = useState<String[]>([]);
   const [room, setRoom] = useState<Room>();
   const [recepient, setRecepient] = useState<String>();
@@ -62,10 +64,16 @@ export default function Chat() {
     });
   };
 
+  function isLink(text:string): boolean {
+    const urlRegex = /(https?:\/\/[^\s]+)/;
+    return urlRegex.test(text);
+  }
+
   function handleNewChat() {
     if(connecting) return;
-    const intArray: Array<String> = interests.split(',').map((interest) => interest.trim());
+    const intArray: Array<String> =interest?.map(int=>int.toLowerCase().trim()) || [];
     socket.emit('joinRandomRoom', intArray);
+    console.log(intArray);
     setText([]);
     setEnded(false);
     setConnecting(true);
@@ -91,8 +99,9 @@ export default function Chat() {
 
   function handleSend() {
     if (message === '' || recepient === undefined || connecting || sharedSecret === undefined) return;
+    console.log(isLink(message));
     setText((prev) => {
-      return [...prev, { message: message, recived: false }];
+      return [...prev, { message: message, recived: false, isUrl: isLink(message) }];
     });
     const encryptedMes=CryptoJS.AES.encrypt(message,sharedSecret).toString();
     socket.emit('sendMessage', encryptedMes, recepient);
@@ -104,7 +113,7 @@ export default function Chat() {
       if(sharedSecret===undefined) return
       const decryptedMsg = CryptoJS.AES.decrypt(msg,sharedSecret).toString(CryptoJS.enc.Utf8);
       setText((prev) => {
-        return [...prev, { message: decryptedMsg, recived: true }];
+        return [...prev, { message: decryptedMsg, recived: true, isUrl: isLink(decryptedMsg) }];
       });
       setTyping(false);
       sendNotification(decryptedMsg,'New Message');
@@ -173,8 +182,22 @@ export default function Chat() {
     <KeyboardAvoidingView style={styles.container}>
       <ChatMessages text={text} recepient={recepient} interests={commanInt} ended={ended} isTyping={isTyping} connecting={connecting} />
       <View style={styles.intContainer}>
-        <TextInput onChangeText={(txt) => setInterests(txt)} style={styles.interest} multiline
-          numberOfLines={undefined} placeholder="Interests: 'Programming, Guitar, Music'" value={interests} />
+        <Tags 
+        initialText=''
+        textInputProps={{
+          placeholder: "Interests: Programming Music Gaming",
+          
+        }}
+        onChangeTags={(txt) => setInterest(txt)}
+        onTagPress={(index, tagLabel, event, deleted) =>{}}
+        renderTag={({ tag, index, onPress, deleteTagOnPress, readonly }) => (
+          <TouchableOpacity key={`${tag}-${index}`} onPress={onPress} style={styles.tagStyle}>
+              <Text style={styles.tagText}>{tag}</Text>
+              <Ionicons name='close-circle-outline' size={20} color={'red'}/>
+            </TouchableOpacity>
+          )}
+          inputStyle={styles.intInterest}
+          />
       </View>
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.button} onPress={room === undefined ? handleNewChat : handleEndChat}>
@@ -242,9 +265,10 @@ const styles = StyleSheet.create({
     color: '#FFF'
   },
   intContainer: {
-    flexDirection: 'row',
+    display: 'flex',
     padding: 6,
     margin: 6,
+    justifyContent: 'center',
     backgroundColor: '#FFF',
     borderWidth: 0.5,
   },
@@ -263,4 +287,25 @@ const styles = StyleSheet.create({
     borderBottomEndRadius: 50,
     paddingVertical: 11,
   },
+  intInterest: {
+    width: '100%',
+    height: '100%',
+    fontSize: 18,
+    backgroundColor: 'white',
+    borderRadius: 0,
+  },
+  tagStyle: {
+    flexDirection: 'row',
+    width: 'auto',
+    backgroundColor: '#e68627',
+    borderRadius: 8,
+    margin: 6,
+    padding: 6,
+    justifyContent: 'center',
+  },
+  tagText: {
+    color: '#FFF',
+    fontSize: 18,
+    marginEnd: 5,
+  }
 });
