@@ -155,7 +155,6 @@ export default function Chat() {
       setRoom(undefined);
       setRecepient(undefined);
       setCommanInt([]);
-      setEnded(true);
       setTyping(false);
       setConnecting(false);
       Alert.alert('Error', 'There have been some server error try later', [
