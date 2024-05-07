@@ -19,7 +19,7 @@ const LinkElement: React.FC<LinkElementProps> = ({ message }) => {
                     return (
                         <>
                             <View style={styles.container}>
-                                <Image source={{ uri: previewData.image?.url }} style={styles.image} />
+                                <Image source={{ uri: previewData.image?.url }} style={[styles.image, {aspectRatio: aspectRatio}]} />
                                 <Text style={styles.title}>{previewData.title}</Text>
                                 <Text style={styles.description}>{previewData?.description}</Text>
                             </View>
@@ -71,7 +71,6 @@ const styles = StyleSheet.create({
     },
     image: {
         width: '100%',
-        height: 150,
         resizeMode: 'cover',
     },
     textRecived: {

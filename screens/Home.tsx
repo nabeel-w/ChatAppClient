@@ -1,6 +1,6 @@
 /* eslint-disable */
 
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, PermissionsAndroid } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
 
@@ -18,7 +18,10 @@ export default function Home({ navigation }:Props) {
       <Text style={styles.title}>Chat App</Text>
       <Text style={styles.descText}>Embark on an unpredictable journey of spontaneous conversations with our Socket.io Chat App</Text>
       </View>
-      <TouchableOpacity style={styles.button} onPress={()=>{navigation.push('Chat');} }>
+      <TouchableOpacity style={styles.button} onPress={()=>{
+        PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        navigation.push('Chat');
+        } }>
         <Text style={styles.buttonText}>Get Started</Text>
       </TouchableOpacity>
     </View>

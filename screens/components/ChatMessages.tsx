@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import React, { useRef } from 'react';
 import IsTyping from './IsTyping';
 import LinkElement from './LinkElement';
+import PressableMessage from './PressableMessage';
 
 type TextObj = {
   message: string,
@@ -34,21 +35,30 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, 
   const handleContentSizeChange = () => {
     scrollToBottom();
   };
+  const sentStyles = {
+    text: styles.textSent,
+    container: styles.dropDownContainerStyleSent,
+  };
+
+  const recivedStyles = {
+    text: styles.textRecived,
+    container: styles.dropDownContainerStyleRecived,
+  };
 
   return (
-    <ScrollView style={styles.container} ref={scrollViewRef} onContentSizeChange={handleContentSizeChange} contentContainerStyle={{ flexGrow: 1, paddingBottom: 22 }}>
+    <ScrollView style={styles.container} ref={scrollViewRef} onContentSizeChange={handleContentSizeChange} contentContainerStyle={{flexGrow: 1, paddingBottom: 22}}>
       {connecting ? <Text style={styles.mutedTitle}>Connecting with a Stranger</Text> : recepient === undefined ? <Text style={styles.mutedTitle}>Connect with a Stranger</Text> : <Text style={styles.mutedTitle}>Stranger Connected</Text>}
       {(interests[0] !== '' && interests.length !== 0) && <Text style={styles.mutedDesc}>You both like {interests.map(interest=>`${interest} `)}</Text>}
       {text.map((txt,index) => (
         !txt.recived ?
         <View style={styles.sentText} key={index}>
             {txt.isUrl ? <LinkElement message={txt.message} />
-            : <Text style={styles.textSent}>{txt.message}</Text>
+            : <PressableMessage message={txt.message} style={sentStyles}/>
             }
           </View> :
           <View style={styles.recivedText} key={index}>
             {txt.isUrl ? <LinkElement message={txt.message} />
-            : <Text style={styles.textRecived}>{txt.message}</Text>
+            : <PressableMessage message={txt.message} style={recivedStyles}/>
             }
           </View>
       ))}
@@ -111,6 +121,13 @@ const styles = StyleSheet.create({
     position: 'relative',
     bottom: 0,
     padding: 10,
+  },
+  dropDownContainerStyleSent: {
+    alignSelf: 'flex-end',
+    right: 2,
+  },
+  dropDownContainerStyleRecived: {
+    alignSelf: 'flex-start',
   },
 });
 

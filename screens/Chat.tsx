@@ -1,21 +1,25 @@
 /* eslint-disable */
 
-import { KeyboardAvoidingView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, PermissionsAndroid, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import React, { useEffect, useState } from 'react';
 import messaging from '@react-native-firebase/messaging';
 import ChatMessages from './components/ChatMessages';
 import io from 'socket.io-client';
 import { generateKeys, generateSharedSecret } from '../utils/createKeys';
-import { SOCKET_URI, FCM_SERVER_KEY } from "@env"
+import { SOCKET_URI, FCM_SERVER_KEY, API_KEY } from "@env"
 import bigInt from 'big-integer';
 import CryptoJS from "react-native-crypto-js";
 import Tags from "react-native-tags";
+import { useNavigation } from '@react-navigation/native';
+
 
 
 const url: string = SOCKET_URI;
 
-const socket = io(url);
+const socket = io(url, {
+  query: { apiKey: API_KEY }
+});
 
 type Room = {
   name: String,
@@ -39,6 +43,7 @@ export default function Chat() {
   const [isTyping, setTyping] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [sharedSecret, setSharedSecret] = useState<string>();
+  const navigation = useNavigation(); 
 
   const userKey = generateKeys();
   
@@ -98,12 +103,11 @@ export default function Chat() {
   }
 
   function handleSend() {
-    if (message === '' || recepient === undefined || connecting || sharedSecret === undefined) return;
-    console.log(isLink(message));
+    if (message.trim() === '' || recepient === undefined || connecting || sharedSecret === undefined) return;
     setText((prev) => {
-      return [...prev, { message: message, recived: false, isUrl: isLink(message) }];
+      return [...prev, { message: message.trim(), recived: false, isUrl: isLink(message) }];
     });
-    const encryptedMes=CryptoJS.AES.encrypt(message,sharedSecret).toString();
+    const encryptedMes=CryptoJS.AES.encrypt(message.trim(),sharedSecret).toString();
     socket.emit('sendMessage', encryptedMes, recepient);
     setMessage('');
   }
@@ -147,6 +151,21 @@ export default function Chat() {
       sendNotification('Start a new Chat','Stranger Disconnected')
     };
 
+    const handleError = ()=>{
+      setRoom(undefined);
+      setRecepient(undefined);
+      setCommanInt([]);
+      setEnded(true);
+      setTyping(false);
+      setConnecting(false);
+      Alert.alert('Error', 'There have been some server error try later', [
+        {
+          text: 'Try Again',
+          onPress: () => {socket.connect()},
+        },
+      ])
+    }
+
     const handleTyping = (Typing: boolean) => {
       setTyping(Typing);
     };
@@ -159,11 +178,20 @@ export default function Chat() {
       sendNotification('Tap To Start Chatting','Stranger Connected')
     };
 
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      e.preventDefault();
+    });
+
+    const checkPermission = async () =>{
+      const res = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      if(!res) PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    }
+
     socket.on('newMessage', handleRecive);
     socket.on('roomJoined', handleJoinRoom);
     socket.on('roomCreated', handleNewRoom);
     socket.on('roomDestroyed', handleDisconnect);
-    socket.on('disconnect', handleDisconnect);
+    socket.on('disconnect', handleError);
     socket.on('typing', handleTyping);
     socket.on('handleKey', handleKeyExchange);
     return () => {
@@ -171,9 +199,11 @@ export default function Chat() {
       socket.off('roomJoined', handleJoinRoom);
       socket.off('roomCreated', handleNewRoom);
       socket.off('roomDestroyed', handleDisconnect);
-      socket.off('disconnect', handleDisconnect);
+      socket.off('disconnect', handleError);
       socket.off('typing', handleTyping);
       socket.off('handleKey', handleKeyExchange);
+      unsubscribe
+      checkPermission
     };
   }, [sharedSecret]);
 
