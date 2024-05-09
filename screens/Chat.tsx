@@ -5,21 +5,32 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import React, { useEffect, useState } from 'react';
 import messaging from '@react-native-firebase/messaging';
 import ChatMessages from './components/ChatMessages';
-import io from 'socket.io-client';
+import { Socket } from 'socket.io-client';
 import { generateKeys, generateSharedSecret } from '../utils/createKeys';
-import { SOCKET_URI, FCM_SERVER_KEY, API_KEY } from "@env"
+import { FCM_SERVER_KEY, REST_URI } from "@env"
 import bigInt from 'big-integer';
 import CryptoJS from "react-native-crypto-js";
 import Tags from "react-native-tags";
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import DeviceInfo from 'react-native-device-info';
+import { useSocket } from '../utils/SocketContext';
 
 
 
-const url: string = SOCKET_URI;
+const getFCMCode = async () => {
+  try {
+    const Token = await AsyncStorage.getItem('FCM');
+    if (Token !== undefined) return Token;
+    else {
+      const Code = await messaging().getToken();
+      return Code;
+    }
+  } catch (error) {
+    console.error('Error fetching FCM token:', error);
+  }
+}
 
-const socket = io(url, {
-  query: { apiKey: API_KEY }
-});
 
 type Room = {
   name: String,
@@ -30,6 +41,60 @@ type TextObj = {
   message: string,
   recived: Boolean,
   isUrl: Boolean,
+  userId: string
+}
+
+
+async function storeUserData(fcmCurrentToken: string) {
+  const Token = await AsyncStorage.getItem('FCM');
+  const andriodId = await DeviceInfo.getAndroidId();
+  const url = `${REST_URI}api/user/token`
+  const data = { androidId: andriodId, fcmToken: fcmCurrentToken };
+  if (Token === fcmCurrentToken) return;
+  if (Token === null) {
+    //Store FCM code and andriodID to backend
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    };
+    try {
+      await AsyncStorage.setItem('FCM', fcmCurrentToken);
+      const res = await fetch(url, options);
+    } catch (error) {
+      const option = {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      };
+      try {
+        const res = await fetch(url, option);
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
+  else {
+    //Update FCM code and andriodID to backend
+    const options = {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    };
+    try {
+      await AsyncStorage.setItem('FCM', fcmCurrentToken);
+      const res = await fetch(url, options);
+      console.log(res);
+    } catch (error) {
+      console.log(error);
+    }
+  }
 }
 
 export default function Chat() {
@@ -43,13 +108,16 @@ export default function Chat() {
   const [isTyping, setTyping] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [sharedSecret, setSharedSecret] = useState<string>();
-  const navigation = useNavigation(); 
+  const [scroll, setScroll] = useState(false);
+  const navigation = useNavigation();
 
   const userKey = generateKeys();
-  
+  const  { socket }  = useSocket() as { socket: Socket };
+
   const sendNotification = async (message: string, title: string) => {
     const fcmToken = await messaging().getToken();
-    
+    storeUserData(fcmToken);
+
     const notification = {
       to: fcmToken,
       notification: {
@@ -58,7 +126,7 @@ export default function Chat() {
         icon: 'ic_stat_send_786306'
       },
     };
-  
+
     await fetch('https://fcm.googleapis.com/fcm/send', {
       method: 'POST',
       headers: {
@@ -69,14 +137,14 @@ export default function Chat() {
     });
   };
 
-  function isLink(text:string): boolean {
+  function isLink(text: string): boolean {
     const urlRegex = /(https?:\/\/[^\s]+)/;
     return urlRegex.test(text);
   }
 
   function handleNewChat() {
-    if(connecting) return;
-    const intArray: Array<String> =interest?.map(int=>int.toLowerCase().trim()) || [];
+    if (connecting) return;
+    const intArray: Array<String> = interest?.map(int => int.toLowerCase().trim()) || [];
     socket.emit('joinRandomRoom', intArray);
     console.log(intArray);
     setText([]);
@@ -97,30 +165,32 @@ export default function Chat() {
   }
 
   function handleFocus() {
+    setScroll(true);
     if (recepient === undefined) return;
-    console.log('Keyboard in Focus');
     socket.emit('isTyping', recepient, true);
   }
 
   function handleSend() {
     if (message.trim() === '' || recepient === undefined || connecting || sharedSecret === undefined) return;
     setText((prev) => {
-      return [...prev, { message: message.trim(), recived: false, isUrl: isLink(message) }];
+      const text:TextObj = { message: message.trim(), recived: false, isUrl: isLink(message), userId: socket.id as string }
+      return [...prev, text];
     });
-    const encryptedMes=CryptoJS.AES.encrypt(message.trim(),sharedSecret).toString();
+    const encryptedMes = CryptoJS.AES.encrypt(message.trim(), sharedSecret).toString();
     socket.emit('sendMessage', encryptedMes, recepient);
     setMessage('');
   }
 
   useEffect(() => {
     const handleRecive = (msg: string) => {
-      if(sharedSecret===undefined) return
-      const decryptedMsg = CryptoJS.AES.decrypt(msg,sharedSecret).toString(CryptoJS.enc.Utf8);
+      if (sharedSecret === undefined) return
+      const decryptedMsg = CryptoJS.AES.decrypt(msg, sharedSecret).toString(CryptoJS.enc.Utf8);
       setText((prev) => {
-        return [...prev, { message: decryptedMsg, recived: true, isUrl: isLink(decryptedMsg) }];
+        const text:TextObj={ message: decryptedMsg, recived: true, isUrl: isLink(decryptedMsg),  userId: recepient as string }
+        return [...prev, text];
       });
       setTyping(false);
-      sendNotification(decryptedMsg,'New Message');
+      sendNotification(decryptedMsg, 'New Message');
     };
 
     const handleJoinRoom = (users: String[], roomName: String, commanIntrests: String[]) => {
@@ -148,10 +218,10 @@ export default function Chat() {
       setEnded(true);
       setTyping(false);
       setConnecting(false);
-      sendNotification('Start a new Chat','Stranger Disconnected')
+      sendNotification('Start a new Chat', 'Stranger Disconnected')
     };
 
-    const handleError = ()=>{
+    const handleError = () => {
       setRoom(undefined);
       setRecepient(undefined);
       setCommanInt([]);
@@ -160,7 +230,7 @@ export default function Chat() {
       Alert.alert('Error', 'There have been some server error try later', [
         {
           text: 'Try Again',
-          onPress: () => {socket.connect()},
+          onPress: () => { socket.connect() },
         },
       ])
     }
@@ -171,19 +241,25 @@ export default function Chat() {
 
     const handleKeyExchange = (publicKey: string) => {
       const receivedKey = bigInt(publicKey);
-      const secret = generateSharedSecret(userKey.privateKey,receivedKey,userKey.prime);
+      const secret = generateSharedSecret(userKey.privateKey, receivedKey, userKey.prime);
       setSharedSecret(secret);
       setConnecting(false);
-      sendNotification('Tap To Start Chatting','Stranger Connected')
+      sendNotification('Tap To Start Chatting', 'Stranger Connected')
     };
 
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       e.preventDefault();
     });
 
-    const checkPermission = async () =>{
+    const checkPermission = async () => {
       const res = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-      if(!res) PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+      if (!res) PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    }
+
+    const handleConnection = async () => {
+      console.log("connection estasblished");
+      const fcm = await getFCMCode();
+      socket.emit('userCredential', fcm);
     }
 
     socket.on('newMessage', handleRecive);
@@ -193,6 +269,7 @@ export default function Chat() {
     socket.on('disconnect', handleError);
     socket.on('typing', handleTyping);
     socket.on('handleKey', handleKeyExchange);
+    socket.on('connect', handleConnection);
     return () => {
       socket.off('newMessage', handleRecive);
       socket.off('roomJoined', handleJoinRoom);
@@ -201,6 +278,7 @@ export default function Chat() {
       socket.off('disconnect', handleError);
       socket.off('typing', handleTyping);
       socket.off('handleKey', handleKeyExchange);
+      socket.off('connect', handleConnection);
       unsubscribe
       checkPermission
     };
@@ -209,24 +287,24 @@ export default function Chat() {
 
   return (
     <KeyboardAvoidingView style={styles.container}>
-      <ChatMessages text={text} recepient={recepient} interests={commanInt} ended={ended} isTyping={isTyping} connecting={connecting} />
+      <ChatMessages scroll={scroll} text={text} recepient={recepient} interests={commanInt} ended={ended} isTyping={isTyping} connecting={connecting} />
       <View style={styles.intContainer}>
-        <Tags 
-        initialText=''
-        textInputProps={{
-          placeholder: "Interests: Programming Music Gaming",
-          
-        }}
-        onChangeTags={(txt) => setInterest(txt)}
-        onTagPress={(index, tagLabel, event, deleted) =>{}}
-        renderTag={({ tag, index, onPress, deleteTagOnPress, readonly }) => (
-          <TouchableOpacity key={`${tag}-${index}`} onPress={onPress} style={styles.tagStyle}>
+        <Tags
+          initialText=''
+          textInputProps={{
+            placeholder: "Interests: Programming Music Gaming",
+
+          }}
+          onChangeTags={(txt) => setInterest(txt)}
+          onTagPress={(index, tagLabel, event, deleted) => { }}
+          renderTag={({ tag, index, onPress, deleteTagOnPress, readonly }) => (
+            <TouchableOpacity key={`${tag}-${index}`} onPress={onPress} style={styles.tagStyle}>
               <Text style={styles.tagText}>{tag}</Text>
-              <Ionicons name='close-circle-outline' size={20} color={'red'}/>
+              <Ionicons name='close-circle-outline' size={20} color={'red'} />
             </TouchableOpacity>
           )}
           inputStyle={styles.intInterest}
-          />
+        />
       </View>
       <View style={styles.inputContainer}>
         <TouchableOpacity style={styles.button} onPress={room === undefined ? handleNewChat : handleEndChat}>
@@ -236,8 +314,8 @@ export default function Chat() {
         <View style={styles.inputFeild}>
           <TextInput onChangeText={(txt) => setMessage(txt)} style={styles.textInput} onFocus={handleFocus} onBlur={handleBlur}
             numberOfLines={undefined} multiline placeholder="Enter Your Message" value={message}
-            
-            />
+
+          />
           <TouchableOpacity onPress={handleSend}>
             <Ionicons name="send" size={28} style={styles.buttonIcon} />
           </TouchableOpacity>

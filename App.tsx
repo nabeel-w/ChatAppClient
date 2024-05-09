@@ -6,6 +6,7 @@ import messaging from '@react-native-firebase/messaging';
 import {PermissionsAndroid, Text, View} from 'react-native';
 import Home from './screens/Home';
 import Chat from './screens/Chat';
+import { SocketProvider } from './utils/SocketContext';
 
 type RootStackParamList = {
   Home: undefined;
@@ -52,6 +53,7 @@ export default function App() {
   },[])
 
   return (
+    <SocketProvider>
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName='Home'>
         <Stack.Screen
@@ -65,5 +67,6 @@ export default function App() {
          />
       </Stack.Navigator>
     </NavigationContainer>
+    </SocketProvider>
   );
 };

@@ -3,24 +3,28 @@
 import React, { useRef, useState } from 'react';
 import { View, Pressable, Text, Modal, StyleSheet, TextStyle, ViewStyle, Alert} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
+import { useSocket } from '../../utils/SocketContext';
+import { Socket } from 'socket.io-client';
 
 
 interface PressableMessageProp{
-    message: string,
-    style: {text: TextStyle; container: ViewStyle}
+    message: string;
+    style: {text: TextStyle; container: ViewStyle};
+    userId: string;
 }
 interface buttonLayout{
-    x:number,
-    y:number,
-    width: number,
-    height: number,
-    X: number
+    x:number;
+    y:number;
+    width: number;
+    height: number;
+    X: number;
 }
 
-const PressableMessage = ({ message, style }:PressableMessageProp) => {
+const PressableMessage = ({ message, style, userId }:PressableMessageProp) => {
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const [buttonLayout, setButtonLayout] = useState<buttonLayout>();
   const buttonRef = useRef<View>(null);
+  const  { socket }  = useSocket() as { socket: Socket };
 
   const toggleDropdown = () => {
     setIsDropdownVisible(!isDropdownVisible);
@@ -37,12 +41,20 @@ const PressableMessage = ({ message, style }:PressableMessageProp) => {
     toggleDropdown();
   };
 
+  const sendReport = ()=>{
+    if(userId===socket.id) return;
+    else{
+      socket.emit('reportUser', userId, message);
+      socket.emit('leaveRoom');
+    }
+  }
+
   const handleReport = () =>{
     toggleDropdown();
-    Alert.alert('Report', 'Do you want to report this message', [
+    Alert.alert('Report', 'Do you want to report this message & end chat', [
       {
         text: 'Yes',
-        onPress: () => console.log('Yes Pressed'),
+        onPress: () => sendReport,
       },
       {
         text: 'No',

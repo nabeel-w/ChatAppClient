@@ -1,7 +1,7 @@
-/* eslint-disable prettier/prettier */
+/* eslint-disable */
 
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import IsTyping from './IsTyping';
 import LinkElement from './LinkElement';
 import PressableMessage from './PressableMessage';
@@ -10,6 +10,7 @@ type TextObj = {
   message: string,
   recived: Boolean,
   isUrl: Boolean,
+  userId: string
 }
 
 interface ChatMessagesProps {
@@ -19,10 +20,11 @@ interface ChatMessagesProps {
   ended: boolean;
   isTyping: boolean;
   connecting: boolean;
+  scroll:boolean;
 }
 
 
-const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, ended, isTyping, connecting}) => {
+const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, ended, isTyping, connecting, scroll}) => {
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -35,6 +37,11 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, 
   const handleContentSizeChange = () => {
     scrollToBottom();
   };
+
+  useEffect(() => {
+    if (scroll) scrollToBottom();
+  },[scroll,scrollViewRef]);
+
   const sentStyles = {
     text: styles.textSent,
     container: styles.dropDownContainerStyleSent,
@@ -53,12 +60,12 @@ const ChatMessages: React.FC<ChatMessagesProps> = ({text, recepient, interests, 
         !txt.recived ?
         <View style={styles.sentText} key={index}>
             {txt.isUrl ? <LinkElement message={txt.message} />
-            : <PressableMessage message={txt.message} style={sentStyles}/>
+            : <PressableMessage message={txt.message} style={sentStyles} userId={txt.userId}/>
             }
           </View> :
           <View style={styles.recivedText} key={index}>
             {txt.isUrl ? <LinkElement message={txt.message} />
-            : <PressableMessage message={txt.message} style={recivedStyles}/>
+            : <PressableMessage message={txt.message} style={recivedStyles} userId={txt.userId}/>
             }
           </View>
       ))}
@@ -77,7 +84,7 @@ const styles = StyleSheet.create({
     margin: 6,
   },
   sentText: {
-    maxWidth: '60%',
+    maxWidth: '70%',
     alignSelf: 'flex-end',
     padding: 8,
     backgroundColor: '#e68627',
@@ -86,7 +93,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   recivedText: {
-    maxWidth: '60%',
+    maxWidth: '70%',
     alignSelf: 'flex-start',
     padding: 8,
     marginVertical: 4,
@@ -120,7 +127,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     position: 'relative',
     bottom: 0,
-    padding: 10,
+    padding: 12,
   },
   dropDownContainerStyleSent: {
     alignSelf: 'flex-end',
